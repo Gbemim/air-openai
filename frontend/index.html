@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBot AI</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; background: #f7f7f8; color: #1f1f1f; height: 100vh; overflow: hidden; }
+        #root { height: 100vh; }
+        .app { display: flex; height: 100vh; }
+        .sidebar { width: 260px; background: #ffffff; border-right: 1px solid #e5e5e5; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 12px; border-bottom: 1px solid #e5e5e5; }
+        .new-chat-btn { width: 100%; padding: 12px 16px; background: transparent; border: 1px solid #d1d1d1; color: #1f1f1f; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .new-chat-btn:hover { background: #f0f0f0; }
+        .conversations { flex: 1; overflow-y: auto; padding: 8px; }
+        .conversation-item { padding: 12px; margin: 4px 0; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .conversation-item:hover, .conversation-item.active { background: #f0f0f0; }
+        .conversation-title { flex: 1; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1f1f1f; }
+        .delete-btn { opacity: 0; padding: 4px 8px; background: transparent; border: none; color: #ef4444; cursor: pointer; }
+        .conversation-item:hover .delete-btn { opacity: 1; }
+        .sidebar-footer { padding: 12px; border-top: 1px solid #e5e5e5; text-align: center; font-size: 12px; color: #6b7280; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: #ffffff; }
+        .chat-header { padding: 16px; background: #ffffff; border-bottom: 1px solid #e5e5e5; }
+        .chat-title { font-size: 18px; font-weight: 600; color: #1f1f1f; }
+        .messages { flex: 1; overflow-y: auto; padding: 24px; background: #f7f7f8; }
+        .message { max-width: 800px; margin: 0 auto 24px; display: flex; gap: 16px; }
+        .message.user { justify-content: flex-end; }
+        .message-content { max-width: 80%; padding: 16px; border-radius: 16px; line-height: 1.6; }
+        .message.user .message-content { background: #10a37f; color: #ffffff; }
+        .message.assistant .message-content { background: #f0f0f0; color: #1f1f1f; }
+        .attachment { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,0.05); border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
+        .message-time { font-size: 11px; opacity: 0.7; margin-top: 8px; }
+        .loading { display: flex; gap: 4px; padding: 16px; }
+        .loading-dot { width: 8px; height: 8px; background: #9ca3af; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        .empty-state { height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #6b7280; }
+        .input-area { padding: 16px; background: #ffffff; border-top: 1px solid #e5e5e5; }
+        .input-container { max-width: 800px; margin: 0 auto; }
+        .attachments-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+        .attachment-preview { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f0f0f0; border-radius: 8px; font-size: 13px; }
+        .remove-attachment { background: none; border: none; color: #ef4444; cursor: pointer; }
+        .url-input-box { display: flex; gap: 8px; margin-bottom: 12px; }
+        .url-input-box input { flex: 1; padding: 12px; background: #f9f9f9; border: 1px solid #d1d1d1; border-radius: 8px; color: #1f1f1f; }
+        .url-input-box button { padding: 12px 16px; border-radius: 8px; border: none; cursor: pointer; }
+        .url-add-btn { background: #10a37f; color: #fff; }
+        .url-cancel-btn { background: #e5e5e5; color: #1f1f1f; }
+        .input-box { display: flex; gap: 8px; align-items: flex-end; }
+        .input-actions { display: flex; gap: 8px; }
+        .input-btn { padding: 12px; background: #f0f0f0; border: none; color: #1f1f1f; border-radius: 8px; cursor: pointer; }
+        .input-btn:hover:not(:disabled) { background: #e5e5e5; }
+        .input-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        textarea { flex: 1; padding: 12px 16px; background: #f9f9f9; border: 1px solid #d1d1d1; border-radius: 8px; color: #1f1f1f; font-size: 14px; font-family: inherit; resize: none; min-height: 48px; max-height: 200px; }
+        textarea:focus { outline: none; border-color: #10a37f; }
+        .send-btn { background: #10a37f; color: #fff; }
+        .send-btn:hover:not(:disabled) { background: #0d8c6d; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f7f7f8; }
+        ::-webkit-scrollbar-thumb { background: #d1d1d1; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const API_URL = 'http://localhost:5000/api';
+
+        function App() {
+            const [conversations, setConversations] = useState([]);
+            const [currentConversation, setCurrentConversation] = useState(null);
+            const [messages, setMessages] = useState([]);
+            const [inputMessage, setInputMessage] = useState('');
+            const [attachments, setAttachments] = useState([]);
+            const [isLoading, setIsLoading] = useState(false);
+            const [showUrlInput, setShowUrlInput] = useState(false);
+            const [urlInput, setUrlInput] = useState('');
+            const messagesEndRef = useRef(null);
+            const fileInputRef = useRef(null);
+
+            useEffect(() => { loadConversations(); }, []);
+            useEffect(() => { if (currentConversation) loadMessages(currentConversation.id); }, [currentConversation]);
+            useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+            const loadConversations = async () => {
+                try {
+                    const response = await axios.get(`${API_URL}/conversations`);
+                    setConversations(response.data);
+                    if (response.data.length > 0 && !currentConversation) setCurrentConversation(response.data[0]);
+                } catch (error) { console.error('Failed to load conversations:', error); }
+            };
+
+            const loadMessages = async (conversationId) => {
+                try {
+                    const response = await axios.get(`${API_URL}/conversations/${conversationId}/messages`);
+                    setMessages(response.data);
+                } catch (error) { console.error('Failed to load messages:', error); }
+            };
+
+            const handleNewChat = async () => {
+                try {
+                    const response = await axios.post(`${API_URL}/conversations`);
+                    setConversations([response.data, ...conversations]);
+                    setCurrentConversation(response.data);
+                    setMessages([]);
+                } catch (error) { console.error('Failed to create conversation:', error); }
+            };
+
+            const handleDeleteConversation = async (id, e) => {
+                e.stopPropagation();
+                try {
+                    await axios.delete(`${API_URL}/conversations/${id}`);
+                    setConversations(conversations.filter(c => c.id !== id));
+                    if (currentConversation?.id === id) setCurrentConversation(conversations[0] || null);
+                } catch (error) { console.error('Failed to delete conversation:', error); }
+            };
+
+            const handleFileSelect = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.type !== 'application/pdf') { alert('Only PDF files are supported'); return; }
+                try {
+                    setIsLoading(true);
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const response = await axios.post(`${API_URL}/upload`, formData);
+                    setAttachments([...attachments, { type: 'file', name: file.name, url: response.data.url, size: file.size }]);
+                } catch (error) { alert('Failed to upload file'); } finally { setIsLoading(false); }
+            };
+
+            const handleAddUrl = () => {
+                if (!urlInput.trim()) return;
+                try {
+                    new URL(urlInput);
+                    setAttachments([...attachments, { type: 'url', name: urlInput, url: urlInput }]);
+                    setUrlInput('');
+                    setShowUrlInput(false);
+                } catch (error) { alert('Please enter a valid URL'); }
+            };
+
+            const handleSendMessage = async () => {
+                if (!inputMessage.trim() && attachments.length === 0) return;
+                if (!currentConversation) return;
+                const content = inputMessage.trim();
+                const msgAttachments = [...attachments];
+                setInputMessage('');
+                setAttachments([]);
+                const userMessage = { id: Date.now(), role: 'user', content, attachments: msgAttachments, timestamp: new Date().toISOString() };
+                setMessages([...messages, userMessage]);
+                try {
+                    setIsLoading(true);
+                    const response = await axios.post(`${API_URL}/conversations/${currentConversation.id}/messages`, { content, attachments: msgAttachments });
+                    setMessages(prev => [...prev, { id: response.data.id, role: 'assistant', content: response.data.content, timestamp: response.data.timestamp }]);
+                    loadConversations();
+                } catch (error) { alert('Failed to send message'); } finally { setIsLoading(false); }
+            };
+
+            const formatFileSize = (bytes) => {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            };
+
+            return (
+                <div className="app">
+                    <div className="sidebar">
+                        <div className="sidebar-header">
+                            <button className="new-chat-btn" onClick={handleNewChat}>➕ New Chat</button>
+                        </div>
+                        <div className="conversations">
+                            {conversations.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '20px', color: '#9ca3af', fontSize: '14px' }}>
+                                    <p>No conversations yet</p>
+                                </div>
+                            ) : conversations.map(conv => (
+                                <div key={conv.id} className={`conversation-item ${currentConversation?.id === conv.id ? 'active' : ''}`} onClick={() => setCurrentConversation(conv)}>
+                                    💬 <div className="conversation-title">{conv.title || 'New Conversation'}</div>
+                                    <button className="delete-btn" onClick={(e) => handleDeleteConversation(conv.id, e)}>🗑️</button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="sidebar-footer">ChatBot AI © 2025</div>
+                    </div>
+                    <div className="chat-area">
+                        <div className="chat-header">
+                            <div className="chat-title">{currentConversation ? (currentConversation.title || 'New Conversation') : 'ChatBot AI'}</div>
+                        </div>
+                        <div className="messages">
+                            {!currentConversation ? (
+                                <div className="empty-state"><h2>ChatBot AI</h2><p>Start a new conversation to begin chatting</p></div>
+                            ) : messages.length === 0 ? (
+                                <div className="empty-state"><p>No messages yet. Start the conversation!</p></div>
+                            ) : (
+                                <>
+                                    {messages.map(msg => (
+                                        <div key={msg.id} className={`message ${msg.role}`}>
+                                            <div className="message-content">
+                                                {msg.attachments && msg.attachments.length > 0 && (
+                                                    <div>
+                                                        {msg.attachments.map((att, idx) => (
+                                                            <div key={idx} className="attachment">
+                                                                {att.type === 'file' ? '📄' : '🔗'} <span>{att.name}</span>
+                                                                {att.size && <span style={{ fontSize: '11px', opacity: 0.7 }}>{formatFileSize(att.size)}</span>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <div>{msg.content}</div>
+                                                <div className="message-time">{new Date(msg.timestamp).toLocaleTimeString()}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {isLoading && (
+                                        <div className="message assistant">
+                                            <div className="message-content">
+                                                <div className="loading">
+                                                    <div className="loading-dot"></div>
+                                                    <div className="loading-dot"></div>
+                                                    <div className="loading-dot"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={messagesEndRef} />
+                                </>
+                            )}
+                        </div>
+                        {currentConversation && (
+                            <div className="input-area">
+                                <div className="input-container">
+                                    {attachments.length > 0 && (
+                                        <div className="attachments-preview">
+                                            {attachments.map((att, idx) => (
+                                                <div key={idx} className="attachment-preview">
+                                                    {att.type === 'file' ? '📄' : '🔗'} <span>{att.name}</span>
+                                                    <button className="remove-attachment" onClick={() => setAttachments(attachments.filter((_, i) => i !== idx))}>✕</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {showUrlInput && (
+                                        <div className="url-input-box">
+                                            <input type="text" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddUrl()} placeholder="Enter website URL..." />
+                                            <button className="url-add-btn" onClick={handleAddUrl}>Add</button>
+                                            <button className="url-cancel-btn" onClick={() => { setShowUrlInput(false); setUrlInput(''); }}>Cancel</button>
+                                        </div>
+                                    )}
+                                    <div className="input-box">
+                                        <div className="input-actions">
+                                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".pdf" style={{ display: 'none' }} />
+                                            <button className="input-btn" onClick={() => fileInputRef.current?.click()} disabled={isLoading} title="Attach PDF">📎</button>
+                                            <button className="input-btn" onClick={() => setShowUrlInput(!showUrlInput)} disabled={isLoading} title="Add URL">🔗</button>
+                                        </div>
+                                        <textarea value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder="Type your message..." disabled={isLoading} rows="1" />
+                                        <button className="input-btn send-btn" onClick={handleSendMessage} disabled={isLoading || (!inputMessage.trim() && attachments.length === 0)}>➤</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
