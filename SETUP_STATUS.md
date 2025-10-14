@@ -12,6 +12,10 @@ The backend is **100% complete and running** on port 5000.
 - ✅ Conversation management (create, read, delete)
 - ✅ Message sending and retrieval
 - ✅ File upload handling (supports PDFs)
+- ✅ **NEW: Resume PDF Processing Pipeline**
+- ✅ **NEW: AWS OpenSearch Vector Database**
+- ✅ **NEW: Semantic Search Capabilities**
+- ✅ **NEW: Session-based Resume Storage**
 - ✅ AWS S3 integration utilities (ready to connect)
 - ✅ RESTful API architecture
 
@@ -21,7 +25,9 @@ The backend is **100% complete and running** on port 5000.
 - `DELETE /api/conversations/:id` - Delete conversation
 - `GET /api/conversations/:id/messages` - Get messages
 - `POST /api/conversations/:id/messages` - Send message
-- `POST /api/upload` - Upload PDF file
+- `POST /api/upload` - Upload and process PDF resume
+- `POST /api/upload/search` - Search resume content semantically
+- `GET /api/upload/session/:sessionId` - Get session resume data
 
 ### Frontend (Needs Rebuild)
 The frontend files were created but encountered corruption issues. All the component code is ready and designed:

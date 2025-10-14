@@ -1,0 +1,7 @@
+openai
+pdfminer.six
+langchain-text-splitters
+boto3
+opensearch-py
+requests-aws4auth
+python-dotenv

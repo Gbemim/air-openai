@@ -1,5 +1,6 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
 
 const router = express.Router();
 
@@ -7,7 +8,7 @@ const router = express.Router();
 let conversations = [];
 let messages = [];
 
-// Get all conversations
+// GET /api/conversations - Get all conversations
 router.get('/', (req, res) => {
   try {
     // Sort by most recent first
@@ -20,7 +21,7 @@ router.get('/', (req, res) => {
   }
 });
 
-// Create a new conversation
+// POST /api/conversations - Create a new conversation
 router.post('/', (req, res) => {
   try {
     const newConversation = {
@@ -37,24 +38,10 @@ router.post('/', (req, res) => {
   }
 });
 
-// Get a specific conversation
-router.get('/:conversationId', (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    const conversation = conversations.find(c => c.id === conversationId);
-    
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-    
-    res.json(conversation);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
-// Delete a conversation
-router.delete('/:conversationId', (req, res) => {
+
+// DELETE /api/conversations/:conversationId - Delete a conversation
+router.delete('/:conversationId', async (req, res) => {
   try {
     const { conversationId } = req.params;
     const index = conversations.findIndex(c => c.id === conversationId);
@@ -68,13 +55,22 @@ router.delete('/:conversationId', (req, res) => {
     // Also delete all messages in this conversation
     messages = messages.filter(m => m.conversationId !== conversationId);
     
+    // Clean up associated session data (uploads and OpenSearch data)
+    try {
+      const cleanupResponse = await axios.delete(`http://localhost:5000/api/upload/session/${conversationId}`);
+      console.log(`Session cleanup completed:`, cleanupResponse.data);
+    } catch (cleanupError) {
+      console.warn('Session cleanup failed:', cleanupError.message);
+      // Don't fail the conversation deletion if cleanup fails
+    }
+    
     res.json({ message: 'Conversation deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get messages for a conversation
+// GET /api/conversations/:conversationId/messages - Get messages for a conversation
 router.get('/:conversationId/messages', (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -94,7 +90,7 @@ router.get('/:conversationId/messages', (req, res) => {
   }
 });
 
-// Send a message
+// POST /api/conversations/:conversationId/messages - Send a message
 router.post('/:conversationId/messages', async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -144,28 +140,49 @@ router.post('/:conversationId/messages', async (req, res) => {
   }
 });
 
+// POST /api/conversations/:conversationId/system-message - Add system notification
+router.post('/:conversationId/system-message', (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { content, type = 'info' } = req.body;
+    
+    const conversation = conversations.find(c => c.id === conversationId);
+    
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    
+    // Create system message
+    const systemMessage = {
+      id: uuidv4(),
+      conversationId,
+      role: 'system',
+      content,
+      type, // 'info', 'success', 'error'
+      timestamp: new Date().toISOString(),
+    };
+    
+    messages.push(systemMessage);
+    conversation.updatedAt = new Date().toISOString();
+    
+    res.status(201).json(systemMessage);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Simulate AI response (replace with actual LLM API call)
 async function generateAIResponse(userMessage, attachments) {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 1000));
   
-  let response = "I'm a demo AI assistant. ";
+  let response = "I'm an AI assistant that can analyze your resume. ";
   
   if (attachments && attachments.length > 0) {
-    const fileAttachments = attachments.filter(a => a.type === 'file');
-    const urlAttachments = attachments.filter(a => a.type === 'url');
-    
-    if (fileAttachments.length > 0) {
-      response += `I can see you've attached ${fileAttachments.length} PDF file(s). `;
-    }
-    
-    if (urlAttachments.length > 0) {
-      response += `I can see you've shared ${urlAttachments.length} URL(s). `;
-    }
+    response += "This is your message: " + userMessage + "\n\nI can see you've uploaded files. ";
   }
   
-  response += `You said: "${userMessage}". `;
-  response += "This is a placeholder response. Please integrate your LLM API here to generate actual responses based on the user's message and attachments.";
+  response += "Ask me questions about your resume content, skills, or experience.";
   
   return response;
 }

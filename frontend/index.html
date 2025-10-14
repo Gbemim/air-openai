@@ -33,6 +33,10 @@
         .message-content { max-width: 80%; padding: 16px; border-radius: 16px; line-height: 1.6; }
         .message.user .message-content { background: #10a37f; color: #ffffff; }
         .message.assistant .message-content { background: #f0f0f0; color: #1f1f1f; }
+        .message.system { justify-content: center; }
+        .message.system .message-content { background: #e0f2fe; color: #0277bd; border: 1px solid #b3e5fc; text-align: center; font-size: 14px; max-width: 90%; }
+        .message.system.success .message-content { background: #e8f5e8; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .message.system.error .message-content { background: #ffebee; color: #d32f2f; border: 1px solid #ffcdd2; }
         .attachment { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,0.05); border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
         .message-time { font-size: 11px; opacity: 0.7; margin-top: 8px; }
         .loading { display: flex; gap: 4px; padding: 16px; }
@@ -84,6 +88,22 @@
             useEffect(() => { loadConversations(); }, []);
             useEffect(() => { if (currentConversation) loadMessages(currentConversation.id); }, [currentConversation]);
             useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+            
+            // Poll for new messages every 3 seconds when a conversation is active
+            useEffect(() => {
+                if (!currentConversation) return;
+                const interval = setInterval(async () => {
+                    try {
+                        const response = await axios.get(`${API_URL}/conversations/${currentConversation.id}/messages`);
+                        if (response.data.length !== messages.length) {
+                            setMessages(response.data);
+                        }
+                    } catch (error) {
+                        console.error('Failed to poll messages:', error);
+                    }
+                }, 3000);
+                return () => clearInterval(interval);
+            }, [currentConversation, messages.length]);
 
             const loadConversations = async () => {
                 try {
@@ -126,8 +146,16 @@
                     setIsLoading(true);
                     const formData = new FormData();
                     formData.append('file', file);
+                    if (currentConversation) {
+                        formData.append('conversationId', currentConversation.id);
+                    }
                     const response = await axios.post(`${API_URL}/upload`, formData);
                     setAttachments([...attachments, { type: 'file', name: file.name, url: response.data.url, size: file.size }]);
+                    
+                    // Reload messages to show system notification
+                    if (currentConversation) {
+                        await loadMessages(currentConversation.id);
+                    }
                 } catch (error) { alert('Failed to upload file'); } finally { setIsLoading(false); }
             };
 
@@ -196,7 +224,7 @@
                             ) : (
                                 <>
                                     {messages.map(msg => (
-                                        <div key={msg.id} className={`message ${msg.role}`}>
+                                        <div key={msg.id} className={`message ${msg.role} ${msg.type || ''}`}>
                                             <div className="message-content">
                                                 {msg.attachments && msg.attachments.length > 0 && (
                                                     <div>
@@ -208,8 +236,8 @@
                                                         ))}
                                                     </div>
                                                 )}
-                                                <div>{msg.content}</div>
-                                                <div className="message-time">{new Date(msg.timestamp).toLocaleTimeString()}</div>
+                                                <div dangerouslySetInnerHTML={{__html: msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}}></div>
+                                                {msg.role !== 'system' && <div className="message-time">{new Date(msg.timestamp).toLocaleTimeString()}</div>}
                                             </div>
                                         </div>
                                     ))}
@@ -231,7 +259,7 @@
                         {currentConversation && (
                             <div className="input-area">
                                 <div className="input-container">
-                                    {attachments.length > 0 && (
+                                    {/*{attachments.length > 0 && (
                                         <div className="attachments-preview">
                                             {attachments.map((att, idx) => (
                                                 <div key={idx} className="attachment-preview">
@@ -241,6 +269,7 @@
                                             ))}
                                         </div>
                                     )}
+                                    */}
                                     {showUrlInput && (
                                         <div className="url-input-box">
                                             <input type="text" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddUrl()} placeholder="Enter website URL..." />

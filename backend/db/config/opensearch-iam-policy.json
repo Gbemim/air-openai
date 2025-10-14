@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "es:ESHttpGet",
+        "es:ESHttpPost",
+        "es:ESHttpPut",
+        "es:ESHttpDelete",
+        "es:ESHttpHead"
+      ],
+      "Resource": "arn:aws:es:us-east-1:232090675351:domain/air-openai-project/*"
+    }
+  ]
+}
