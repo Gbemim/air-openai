@@ -91,8 +91,9 @@ router.post('/', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Generate or use provided session ID
-    const sessionId = req.body.sessionId || uuidv4();
+    // Use conversationId as sessionId for consistency with chat
+    // This ensures resume data can be retrieved during chat
+    const sessionId = req.body.conversationId || req.body.sessionId || uuidv4();
     
     const fileInfo = {
       filename: req.file.filename,

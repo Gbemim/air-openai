@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatBot AI</title>
+    <title>Career AI Agents</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -210,15 +210,15 @@
                                 </div>
                             ))}
                         </div>
-                        <div className="sidebar-footer">ChatBot AI © 2025</div>
+                        <div className="sidebar-footer">Career AI Agents © 2025</div>
                     </div>
                     <div className="chat-area">
                         <div className="chat-header">
-                            <div className="chat-title">{currentConversation ? (currentConversation.title || 'New Conversation') : 'ChatBot AI'}</div>
+                            <div className="chat-title">{currentConversation ? (currentConversation.title || 'New Conversation') : 'Career AI Agents'}</div>
                         </div>
                         <div className="messages">
                             {!currentConversation ? (
-                                <div className="empty-state"><h2>ChatBot AI</h2><p>Start a new conversation to begin chatting</p></div>
+                                <div className="empty-state"><h2>Career AI Agents</h2><p>Start a new conversation to begin chatting</p></div>
                             ) : messages.length === 0 ? (
                                 <div className="empty-state"><p>No messages yet. Start the conversation!</p></div>
                             ) : (

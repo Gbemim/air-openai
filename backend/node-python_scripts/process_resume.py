@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent / 'db'))
 
 try:
-    from chunk import process_resume_pipeline
+    from chunking import process_resume_pipeline
 except ImportError as e:
     print(f"Import error: {e}", file=sys.stderr)
     sys.exit(1)

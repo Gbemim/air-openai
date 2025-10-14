@@ -4,6 +4,10 @@ import os
 from typing import List, Dict, Any
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 class AWSOpenSearchClient:
     def __init__(self):
@@ -129,10 +133,15 @@ class AWSOpenSearchClient:
         # Add session filter if provided
         if session_id:
             query_body["query"]["bool"]["filter"] = [
-                {"term": {"metadata.session_id": session_id}}
+                {"term": {"metadata.session_id.keyword": session_id}}
             ]
+            print(f"[DEBUG OpenSearch] Searching with session filter: {session_id}")
+        else:
+            print(f"[DEBUG OpenSearch] Searching WITHOUT session filter")
         
+        print(f"[DEBUG OpenSearch] Query body: {query_body}")
         response = self.client.search(index=self.index_name, body=query_body)
+        print(f"[DEBUG OpenSearch] Search response hits: {response['hits']['total']['value']}")
         
         results = []
         for hit in response['hits']['hits']:

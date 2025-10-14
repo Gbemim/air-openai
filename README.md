@@ -1,4 +1,4 @@
-# Career Chatbot - Full Stack AI System
+# Career AI Agents - Full Stack AI System
 
 **AI Refinery + AWS OpenSearch + OpenAI**
 

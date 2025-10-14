@@ -1,38 +1,39 @@
-import asyncio
+"""
+Simple AI agent using OpenAI GPT models
+"""
 
-from openai import OpenAI
-from dotenv import load_dotenv
+from auth import auth_manager
 
-
-load_dotenv()
-
-client = OpenAI(
-  api_key=str(os.getenv("OPENAI_API_KEY"))
-)
-
-response = client.responses.create(
-  model="gpt-5-nano",
-  input="write a haiku about ai",
-  store=True,
-)
-
-print(response.output_text);
-
+# Simple function for general career guidance using OpenAI
 async def simple_agent(query: str):
     """
-    A simple custom agent that generates synthetic data
-    using Chat Completions API
+    Simple agent function using OpenAI GPT-4
     """
+    try:
+        openai_client = auth_manager.get_openai_client()
+        
+        # Enhanced career guidance prompt
+        system_prompt = """You are a professional career counselor and advisor. Provide helpful, practical, and actionable career guidance. 
 
+Guidelines:
+- Be encouraging but realistic
+- Provide specific, actionable advice
+- Consider current job market trends
+- Focus on practical next steps
+- Be concise but thorough
 
+Respond in a friendly, professional tone."""
 
-    prompt = f"""Your task is to generate some synthetic data so that it will be useful to answer the user question. Do not mention this is synthetic data in your answer.\n\n{query}"""
-    client = AsyncAIRefinery(api_key=api_key)
-
-
-    response = await client.chat.completions.create(
-        messages=[{"role": "user", "content": prompt}],
-        model="meta-llama/Llama-3.1-70B-Instruct",
-    )
-
-    return response.choices[0].message.content
+        response = openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": query}
+            ],
+            temperature=0.7,
+            max_tokens=1000
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error in simple agent: {e}")
+        return f"Error processing query: {str(e)}"

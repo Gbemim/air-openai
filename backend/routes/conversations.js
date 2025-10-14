@@ -1,6 +1,13 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
+import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const router = express.Router();
 
@@ -121,8 +128,8 @@ router.post('/:conversationId/messages', async (req, res) => {
     
     conversation.updatedAt = new Date().toISOString();
     
-    // Simulate AI response (replace with actual LLM integration)
-    const aiResponse = await generateAIResponse(content, attachments);
+    // Generate AI response using AI Refinery + AWS OpenSearch
+    const aiResponse = await generateAIResponse(content, conversationId, attachments);
     
     const aiMessage = {
       id: uuidv4(),
@@ -171,20 +178,61 @@ router.post('/:conversationId/system-message', (req, res) => {
   }
 });
 
-// Simulate AI response (replace with actual LLM API call)
-async function generateAIResponse(userMessage, attachments) {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  let response = "I'm an AI assistant that can analyze your resume. ";
-  
-  if (attachments && attachments.length > 0) {
-    response += "This is your message: " + userMessage + "\n\nI can see you've uploaded files. ";
-  }
-  
-  response += "Ask me questions about your resume content, skills, or experience.";
-  
-  return response;
+// Generate AI response using AI Refinery + AWS OpenSearch pipeline
+async function generateAIResponse(userMessage, conversationId, attachments) {
+  return new Promise((resolve, reject) => {
+    const scriptPath = path.join(__dirname, '../node-python_scripts/chat.py');
+    
+    // Use conversationId as both user_id and session_id for resume context
+    const args = [scriptPath, userMessage, conversationId, conversationId];
+    
+    const pythonProcess = spawn('python3', args);
+    
+    let stdoutData = '';
+    let stderrData = '';
+    
+    pythonProcess.stdout.on('data', (data) => {
+      stdoutData += data.toString();
+    });
+    
+    pythonProcess.stderr.on('data', (data) => {
+      stderrData += data.toString();
+      console.error('Python stderr:', data.toString());
+    });
+    
+    pythonProcess.on('close', (code) => {
+      if (code === 0) {
+        try {
+          // Extract JSON from output (it's the last line after all the notices)
+          const lines = stdoutData.trim().split('\n');
+          const jsonLine = lines[lines.length - 1]; // Get the last line which should be JSON
+          
+          const result = JSON.parse(jsonLine);
+          
+          if (result.success) {
+            // Return the AI response (without the service badge to keep it clean)
+            resolve(result.response);
+          } else {
+            console.error('AI processing failed:', result.error);
+            resolve("I apologize, but I encountered an error processing your request. Please try again.");
+          }
+        } catch (parseError) {
+          console.error('Error parsing Python response:', parseError);
+          console.error('Raw output:', stdoutData);
+          resolve("I apologize, but I encountered an error processing your request. Please try again.");
+        }
+      } else {
+        console.error(`Python process exited with code ${code}`);
+        console.error('stderr:', stderrData);
+        resolve("I apologize, but I encountered an error processing your request. Please try again.");
+      }
+    });
+    
+    pythonProcess.on('error', (error) => {
+      console.error('Failed to start Python process:', error);
+      reject(error);
+    });
+  });
 }
 
 export default router;

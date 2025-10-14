@@ -5,6 +5,7 @@ Called from Node.js upload route
 """
 
 import sys
+import os
 import json
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent / 'db'))
 
 try:
-    from chunk import search_resume_content
+    from chunking import search_resume_content
 except ImportError as e:
     print(f"Import error: {e}", file=sys.stderr)
     sys.exit(1)

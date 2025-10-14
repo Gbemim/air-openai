@@ -1,15 +1,35 @@
-orchestrator:   
-  agent_list:   
-    # List of agents available in the orchestrator. Each agent must be configure under utility_agents below. 
-    - agent_name: "Data Scientist Agent"  
-    - agent_name: "Search Agent"           
+# AI Refinery Career Agents Configuration
 
-utility_agents:   
-  - agent_class: CustomAgent  
-    agent_name: "Data Scientist Agent"  
-    agent_description: "An agent for generating synthetic data."  # Description of the Data Scientist Agent  
-    config: {}  # Configuration details for the Data Scientist Agent  
+orchestrator:
+  agent_list:
+    - agent_name: "Resume Search Agent"
+    - agent_name: "Resume Assessment Agent"
+    - agent_name: "Job Search Agent"
+    - agent_name: "Interview Prep Agent"
+    - agent_name: "General Career Agent"
 
-  - agent_class: SearchAgent  
-    agent_name: "Search Agent"  
-    # Configuration and description for Search Agent can be added here
+utility_agents:
+  - agent_class: CustomAgent
+    agent_name: "Resume Search Agent"
+    agent_description: "Searches resume content using semantic vector search in AWS OpenSearch with OpenAI embeddings."
+    config: {}
+
+  - agent_class: CustomAgent
+    agent_name: "Resume Assessment Agent"
+    agent_description: "Analyzes resumes and provides feedback on strengths, improvements, and market readiness."
+    config: {}
+
+  - agent_class: CustomAgent
+    agent_name: "Job Search Agent"
+    agent_description: "Helps users find relevant jobs online, suggests platforms, keywords, and search strategies."
+    config: {}
+
+  - agent_class: CustomAgent
+    agent_name: "Interview Prep Agent"
+    agent_description: "Prepares users for interviews with likely questions, answer strategies, and tips."
+    config: {}
+
+  - agent_class: CustomAgent
+    agent_name: "General Career Agent"
+    agent_description: "Provides general career guidance, advice, and answers using OpenAI GPT-4."
+    config: {}

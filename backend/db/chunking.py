@@ -6,6 +6,10 @@ from typing import List, Dict, Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from openai import OpenAI
 from aws_opensearch import AWSOpenSearchClient
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Initialize clients when needed, not at module import
 client = None
@@ -14,7 +18,7 @@ opensearch_client = None
 def get_openai_client():
     global client
     if client is None:
-        client = OpenAI()
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     return client
 
 def get_opensearch_client():
@@ -127,6 +131,7 @@ def search_resume_content(query: str, session_id: str = None, k: int = 5) -> Lis
     Search resume content using semantic similarity
     """
     try:
+        print(f"[DEBUG chunking] Searching with query: '{query[:50]}...', session_id: {session_id}")
         # Generate embedding for the query
         client = get_openai_client()
         query_embedding = client.embeddings.create(
@@ -134,12 +139,16 @@ def search_resume_content(query: str, session_id: str = None, k: int = 5) -> Lis
             input=query
         ).data[0].embedding
         
+        print(f"[DEBUG chunking] Generated embedding, searching in OpenSearch...")
         # Search in OpenSearch
         opensearch_client = get_opensearch_client()
         results = opensearch_client.search_resume_chunks(query_embedding, session_id, k)
         
+        print(f"[DEBUG chunking] Found {len(results)} results")
         return results
         
     except Exception as e:
-        print(f"Error searching resume content: {str(e)}")
+        print(f"[ERROR chunking] Error searching resume content: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return []
