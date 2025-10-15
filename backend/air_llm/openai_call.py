@@ -4,8 +4,7 @@ Simple AI agent using OpenAI GPT models
 
 from auth import auth_manager
 
-# Simple function for general career guidance using OpenAI
-async def simple_agent(query: str):
+async def openai_call(query: str):
     """
     Simple agent function using OpenAI GPT-4
     """
@@ -35,5 +34,5 @@ Respond in a friendly, professional tone."""
         )
         return response.choices[0].message.content
     except Exception as e:
-        print(f"Error in simple agent: {e}")
+        print(f"Error in agent: {e}")
         return f"Error processing query: {str(e)}"

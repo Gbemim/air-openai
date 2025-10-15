@@ -15,7 +15,7 @@ class AWSOpenSearchClient:
         self.host = os.getenv('OPENSEARCH_ENDPOINT')
         self.service = 'es'
         
-        # Use IAM authentication (since IAM ARN is now set as master user)
+        # Use IAM authentication with IAM ARN is set as master user
         credentials = boto3.Session().get_credentials()
         self.awsauth = AWS4Auth(
             credentials.access_key, 

@@ -2,12 +2,15 @@
 Enhanced web interface for Career Agents with AWS OpenSearch integration
 """
 
-import asyncio
-import sys
 import os
-from agents import ask_agents
+import sys
 
-from db.chunking import search_resume_content
+# Add db directory to path
+backend_dir = os.path.dirname(os.path.dirname(__file__))
+sys.path.append(os.path.join(backend_dir, 'db'))
+
+from orchestrator import ask_agents
+from chunking import search_resume_content
 
 async def handle_chat(user_message: str, user_id: str = "user", session_id: str = None):
     """
@@ -21,10 +24,11 @@ async def handle_chat(user_message: str, user_id: str = "user", session_id: str 
     """
     try:
         # Pass session_id directly to ask_agents so it can fetch resume context
-        response = await ask_agents(user_message, user_id, session_id)
+        response, agents_used = await ask_agents(user_message, user_id, session_id)
         return {
             'success': True,
             'response': response,
+            'agents_used': list(agents_used),  # Convert set to list for JSON serialization
             'service': 'AI Refinery (Orchestrator) + AWS OpenSearch + OpenAI'
         }
     except Exception as e:

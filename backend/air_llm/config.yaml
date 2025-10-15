@@ -12,24 +12,122 @@ utility_agents:
   - agent_class: CustomAgent
     agent_name: "Resume Search Agent"
     agent_description: "Searches resume content using semantic vector search in AWS OpenSearch with OpenAI embeddings."
-    config: {}
+    config:
+      source_folder: "uploads/"
+      doc_model: "resume-brain/knowledge-brain"
+      pipeline_steps:
+        - chunk
+        - embed
+        - upload
+      knowledge_config:
+        chunking_config:
+          algorithm: RecursiveCharacterTextSplitter
+          chunk_size: 1000
+          overlap_size: 100
+          separators: ["\n\n", "\n", ".", " "]
+        embedding_config:
+          model: text-embedding-3-large
+          batch_size: 1
+          max_workers: 1
+        upload_config:
+          batch_size: 50
+          max_workers: 2
+        vectordb_config:
+          type: OpenSearch
+          base_url: "from OPENSEARCH_ENDPOINT env"
+          index: "resume-vectors"
+          embedding_column: "embedding"
+          embedding_dimension: 3072
+          top_k: 5
+          content_column:
+            - content
+            - metadata
+          search_method: "knn"
+          space_type: "cosinesimil"
+          timeout: 10
 
   - agent_class: CustomAgent
     agent_name: "Resume Assessment Agent"
     agent_description: "Analyzes resumes and provides feedback on strengths, improvements, and market readiness."
-    config: {}
+    config:
+      assessment_criteria:
+        - technical_skills
+        - experience_relevance
+        - achievements_quantification
+        - formatting_quality
+        - keyword_optimization
+      scoring_weights:
+        technical_skills: 0.3
+        experience_relevance: 0.25
+        achievements_quantification: 0.2
+        formatting_quality: 0.15
+        keyword_optimization: 0.1
+      feedback_categories:
+        strengths: "Highlight positive aspects and standout elements"
+        improvements: "Specific actionable recommendations"
+        market_readiness: "Overall competitiveness assessment"
+        next_steps: "Concrete actions to enhance the resume"
 
   - agent_class: CustomAgent
     agent_name: "Job Search Agent"
     agent_description: "Helps users find relevant jobs online, suggests platforms, keywords, and search strategies."
-    config: {}
+    config:
+      search_platforms:
+        - "LinkedIn"
+        - "Indeed"
+        - "Glassdoor"
+        - "AngelList"
+        - "Stack Overflow Jobs"
+        - "GitHub Jobs"
+      search_strategies:
+        keyword_optimization: "Use specific job titles and skills"
+        location_targeting: "Focus on preferred locations or remote options"
+        company_research: "Research target companies and their culture"
+        application_timing: "Apply within 24-48 hours of posting"
+      job_categories:
+        - "Software Engineering"
+        - "Data Science"
+        - "Product Management"
+        - "DevOps/SRE"
+        - "Frontend Development"
+        - "Backend Development"
+        - "Full Stack Development"
 
   - agent_class: CustomAgent
     agent_name: "Interview Prep Agent"
     agent_description: "Prepares users for interviews with likely questions, answer strategies, and tips."
-    config: {}
+    config:
+      interview_types:
+        - "Technical Interviews"
+        - "Behavioral Interviews"
+        - "System Design"
+        - "Cultural Fit"
+        - "Panel Interviews"
+      question_categories:
+        technical:
+          - "Coding challenges"
+          - "Algorithm and data structures"
+          - "System architecture"
+          - "Problem-solving approach"
+        behavioral:
+          - "Leadership examples"
+          - "Conflict resolution"
+          - "Team collaboration"
+          - "Career goals"
+      answer_frameworks:
+        STAR: "Situation, Task, Action, Result"
+        SOAR: "Situation, Obstacle, Action, Result"
+        CAR: "Challenge, Action, Result"
 
   - agent_class: CustomAgent
     agent_name: "General Career Agent"
     agent_description: "Provides general career guidance, advice, and answers using OpenAI GPT-4."
-    config: {}
+    config:
+      response_style: "conversational"
+      expertise_areas:
+        - "Career transitions"
+        - "Skill development"
+        - "Industry insights"
+        - "Networking strategies"
+        - "Professional growth"
+      max_response_length: 500

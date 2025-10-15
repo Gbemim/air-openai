@@ -1,73 +1,107 @@
+
 """
-Career Agents using AI Refinery SDK + AWS OpenSearch
+Career Agents - Individual agent definitions for AI Refinery
 """
 
+# Standard library imports
 import os
 import sys
-from dotenv import load_dotenv
 
-# Load environment variables
+# Add db directory to path
 backend_dir = os.path.dirname(os.path.dirname(__file__))
-load_dotenv(os.path.join(backend_dir, '.env'))
-
-# Add db directory to path for OpenSearch client
 sys.path.append(os.path.join(backend_dir, 'db'))
+
+# Third-party and local imports
 from chunking import search_resume_content
-
-# Import centralized authentication
 from auth import auth_manager
+from openai_call import openai_call
 
-# Module configuration (moved from __init__.py)
-from pathlib import Path
-CONFIG_PATH = Path(__file__).parent / 'config.yaml'
-PROJECT_NAME = 'career_agents'
+# Track which agents are used
+agents_used = set()
 
-# Import OpenAI agent for general career guidance
-from openai_agent import simple_agent
+# === Agent Definitions ===
 
-# Resume Search Agent (uses OpenAI + AWS OpenSearch)
-async def resume_search_agent(query: str):
+async def resume_search_agent(query: str, config: dict = None, **kwargs):
     """Search resume content using semantic vector search"""
+    
+    print(f"[AGENT] Resume Search Agent invoked")
+    agents_used.add("Resume Search Agent")
+    
     try:
+        # Get configuration values with defaults
+        config = config or {}
+        vectordb_config = config.get('vectordb_config', {})
+        top_k = vectordb_config.get('top_k', 5)
+        
+        # Include chat history context in search if provided
+        enhanced_query = query
+
         # Extract session_id from query if present
         session_id = None
-        if "session_id:" in query:
-            parts = query.split("session_id:")
+        if "session_id:" in enhanced_query:
+            parts = enhanced_query.split("session_id:")
             session_id = parts[1].strip().split()[0] if len(parts) > 1 else None
-            query = parts[0].strip()
-        
-        # Search in OpenSearch using OpenAI embeddings
-        results = search_resume_content(query, session_id, k=5)
-        
+            enhanced_query = parts[0].strip()
+
+        # Search in OpenSearch using OpenAI embeddings with config-specified top_k
+        results = search_resume_content(enhanced_query, session_id, k=top_k)
+
         if not results:
             return "No resume content found. Please make sure a resume has been uploaded."
-        
+
         # Format results
         context = "\n\n".join([
             f"**Section {i+1}:**\n{result['content']}\n(Score: {result.get('score', 'N/A')})"
             for i, result in enumerate(results)
         ])
-        
+
         return f"Found relevant resume content:\n\n{context}"
-        
+
     except Exception as e:
         return f"Error searching resume: {str(e)}"
 
 
-# Resume Assessment Agent
-async def resume_assessment_agent(query: str):
-    """Assess resumes and provide actionable feedback"""
-    prompt = f"""You are a career counselor. Analyze the resume and provide:
 
-1. **STRENGTHS** (2-3 key strengths)
-2. **IMPROVEMENTS** (2-3 specific areas to improve)
-3. **MARKET READINESS** (score 1-10 with brief explanation)
-4. **NEXT STEPS** (3 actionable recommendations)
+async def resume_assessment_agent(query: str, config: dict = None, resume_data: list = None, **kwargs):
+    """Assess resumes and provide actionable feedback"""
+    
+    print(f"[AGENT] Resume Assessment Agent invoked")
+    agents_used.add("Resume Assessment Agent")
+
+    # Get configuration values with defaults
+    config = config or {}
+    assessment_criteria = config.get('assessment_criteria', [
+        'technical_skills', 'experience_relevance', 'achievements_quantification', 
+        'formatting_quality', 'keyword_optimization'
+    ])
+    scoring_weights = config.get('scoring_weights', {})
+    feedback_categories = config.get('feedback_categories', {})
+    
+    # Inject resume context if provided
+    if resume_data:
+        resume_text = "\n\n".join([r['content'] for r in resume_data])
+        query = f"{query}\n\nHere is the user's resume content:\n{resume_text}"
+    else:
+        return "I don't see your resume. Please provide it to me, and I'll be able to give you a more accurate assessment of your skills and provide recommendations tailored to your experience."
+    
+    # Build assessment prompt based on config
+    criteria_text = "\n".join([f"- {criterion.replace('_', ' ').title()}" for criterion in assessment_criteria])
+    
+    prompt = f"""You are a career counselor. 
+
+Analyze the resume focusing on these criteria:
+{criteria_text}
+
+Provide:
+1. **STRENGTHS** ({feedback_categories.get('strengths', 'Highlight positive aspects and standout elements')})
+2. **IMPROVEMENTS** ({feedback_categories.get('improvements', 'Specific actionable recommendations')})
+3. **MARKET READINESS** ({feedback_categories.get('market_readiness', 'Overall competitiveness assessment')}) - score 1-10 with brief explanation
+4. **NEXT STEPS** ({feedback_categories.get('next_steps', 'Concrete actions to enhance the resume')})
 
 Be concise, practical, and encouraging.
 
 {query}"""
-    
+
     client = await auth_manager.get_air_client()
     response = await client.chat.completions.create(
         messages=[{"role": "user", "content": prompt}],
@@ -76,11 +110,41 @@ Be concise, practical, and encouraging.
     return response.choices[0].message.content
 
 
-# Job Search Agent
-async def job_search_agent(query: str):
-    """Help users find jobs online"""
-    prompt = f"""You are a job search expert. Based on the user's background, tell them:
 
+async def job_search_agent(query: str, config: dict = None, resume_data: list = None, **kwargs):
+    """Help users find jobs online"""
+    
+    print(f"[AGENT] Job Search Agent invoked")
+    agents_used.add("Job Search Agent")
+
+    # Get configuration values with defaults
+    config = config or {}
+    search_platforms = config.get('search_platforms', ['LinkedIn', 'Indeed', 'Glassdoor'])
+    search_strategies = config.get('search_strategies', {})
+    job_categories = config.get('job_categories', ['Software Engineering', 'Data Science'])
+    
+    # Inject resume context if provided
+    if resume_data:
+        resume_text = "\n\n".join([r['content'] for r in resume_data])
+        query = f"{query}\n\nHere is the user's background from their resume:\n{resume_text}"
+    
+    # Build platform and category lists for the prompt
+    platforms_text = "\n".join([f"- {platform}" for platform in search_platforms])
+    categories_text = "\n".join([f"- {category}" for category in job_categories])
+    strategies_text = "\n".join([f"- {key.replace('_', ' ').title()}: {value}" for key, value in search_strategies.items()])
+    
+    prompt = f"""You are a job search expert. 
+
+Based on the user's background, recommend from these platforms:
+{platforms_text}
+
+Consider these job categories:
+{categories_text}
+
+Apply these strategies:
+{strategies_text}
+
+Provide:
 1. **SPECIFIC JOB SITES** (which platforms work best for their profile)
 2. **SEARCH KEYWORDS** (exact terms to use)
 3. **JOB TITLES** (5-7 titles they should search for)
@@ -90,7 +154,7 @@ async def job_search_agent(query: str):
 Be specific and actionable.
 
 {query}"""
-    
+
     client = await auth_manager.get_air_client()
     response = await client.chat.completions.create(
         messages=[{"role": "user", "content": prompt}],
@@ -99,13 +163,37 @@ Be specific and actionable.
     return response.choices[0].message.content
 
 
-# Interview Prep Agent
-async def interview_prep_agent(query: str):
-    """Help users prepare for interviews"""
-    prompt = f"""You are an interview coach. Help this person prepare:
 
+async def interview_prep_agent(query: str, config: dict = None, resume_data: list = None, **kwargs):
+    """Help users prepare for interviews"""
+    
+    print(f"[AGENT] Interview Prep Agent invoked")
+    agents_used.add("Interview Prep Agent")
+
+    # Get configuration values with defaults
+    config = config or {}
+    interview_types = config.get('interview_types', ['Technical Interviews', 'Behavioral Interviews'])
+    question_categories = config.get('question_categories', {})
+    answer_frameworks = config.get('answer_frameworks', {})
+    
+    # Inject resume context if provided
+    if resume_data:
+        resume_text = "\n\n".join([r['content'] for r in resume_data])
+        query = f"{query}\n\nHere is the user's background from their resume:\n{resume_text}"
+    
+    # Build framework text for the prompt
+    frameworks_text = "\n".join([f"- {name}: {description}" for name, description in answer_frameworks.items()])
+    
+    prompt = f"""You are an interview coach. 
+
+Focus on these interview types: {', '.join(interview_types)}
+
+Use these answer frameworks:
+{frameworks_text}
+
+Help this person prepare:
 1. **LIKELY QUESTIONS** (5-7 questions they'll probably be asked)
-2. **HOW TO ANSWER** (structure for good responses)
+2. **HOW TO ANSWER** (structure for good responses using the frameworks above)
 3. **QUESTIONS TO ASK** (5 good questions to ask the interviewer)
 4. **KEY POINTS** (what to highlight from their background)
 5. **COMMON MISTAKES** (what to avoid)
@@ -113,7 +201,7 @@ async def interview_prep_agent(query: str):
 Be practical and specific.
 
 {query}"""
-    
+
     client = await auth_manager.get_air_client()
     response = await client.chat.completions.create(
         messages=[{"role": "user", "content": prompt}],
@@ -122,139 +210,31 @@ Be practical and specific.
     return response.choices[0].message.content
 
 
-# General Career Agent (uses OpenAI GPT-4)
-async def general_career_agent(query: str):
+
+async def general_career_agent(query: str, config: dict = None, resume_data: list = None, **kwargs):
+
+    print(f"[AGENT] General Career Agent invoked")
+    agents_used.add("General Career Agent")
+
     """General career guidance using OpenAI"""
-    return await simple_agent(query)
-
-
-class CareerAgents:
-    """Career agents using AI Refinery orchestrator"""
-    def __init__(self):
-        self.project_name = PROJECT_NAME
-        self.config_path = CONFIG_PATH
-        self.distiller_client = None
+    # Get configuration values with defaults
+    config = config or {}
+    response_style = config.get('response_style', 'conversational')
+    expertise_areas = config.get('expertise_areas', ['Career transitions', 'Skill development'])
+    max_response_length = config.get('max_response_length', 500)
     
-    async def initialize(self):
-        """Initialize the AI Refinery project"""
-        # Get distiller client from auth manager
-        self.distiller_client = auth_manager.get_distiller_client()
-        
-        # Create or update project
-        try:
-            self.distiller_client.create_project(
-                config_path=str(self.config_path),
-                project=self.project_name
-            )
-            print(f"✅ Project '{self.project_name}' initialized")
-        except Exception as e:
-            # Project might already exist, that's OK
-            print(f"Note: {e}")
+    # Inject resume context if provided
+    if resume_data:
+        resume_text = "\n\n".join([r['content'] for r in resume_data])
+        query = f"{query}\n\nHere is the user's background from their resume:\n{resume_text}"
     
-    async def chat(self, message: str, user_id: str = "user", session_id: str = None):
-        """Chat with the career agents - orchestrator handles routing"""
-        if not self.distiller_client:
-            await self.initialize()
+    # Enhance query with chat history and config
+    enhanced_query = f"""
+    Response Style: {response_style}
+    Expertise Areas: {', '.join(expertise_areas)}
+    Max Response Length: {max_response_length} words
         
-        # Get resume context from OpenSearch if session_id provided
-        resume_context = ""
-        resume_sections_data = []
-        print(f"[DEBUG] Chat called with session_id: {session_id}")
-        
-        if session_id:
-            try:
-                # Search for relevant resume content based on the message
-                print(f"[DEBUG] Searching for resume content with session_id: {session_id}")
-                results = search_resume_content(message, session_id, k=3)
-                print(f"[DEBUG] Search results: {len(results)} chunks found")
-                
-                if results:
-                    resume_sections_data = results
-                    resume_sections = "\n\n".join([
-                        f"Resume Section:\n{result['content']}"
-                        for result in results[:3]
-                    ])
-                    resume_context = f"\n\nUser's Resume Context:\n{resume_sections}\n"
-                    print(f"[DEBUG] Resume context found and added to message")
-                else:
-                    print(f"[DEBUG] No resume content found for session_id: {session_id}")
-            except Exception as e:
-                print(f"[ERROR] Could not fetch resume context: {e}")
-                import traceback
-                traceback.print_exc()
-        
-        # Prepend resume context to the message if available
-        enhanced_message = message
-        if resume_context:
-            enhanced_message = f"{message}{resume_context}"
-        
-        # Create wrapper functions that include resume context
-        async def resume_search_with_context(query: str):
-            return await resume_search_agent(query)
-        
-        async def resume_assessment_with_context(query: str):
-            if resume_sections_data:
-                # Add resume data to the query
-                resume_text = "\n\n".join([r['content'] for r in resume_sections_data])
-                enhanced_query = f"{query}\n\nHere is the user's resume content:\n{resume_text}"
-                return await resume_assessment_agent(enhanced_query)
-            else:
-                return "I don't see your resume. Please provide it to me, and I'll be able to give you a more accurate assessment of your skills and provide recommendations tailored to your experience."
-        
-        async def job_search_with_context(query: str):
-            if resume_sections_data:
-                # Add resume data to the query
-                resume_text = "\n\n".join([r['content'] for r in resume_sections_data])
-                enhanced_query = f"{query}\n\nHere is the user's background from their resume:\n{resume_text}"
-                return await job_search_agent(enhanced_query)
-            else:
-                return await job_search_agent(query)
-        
-        async def interview_prep_with_context(query: str):
-            if resume_sections_data:
-                # Add resume data to the query
-                resume_text = "\n\n".join([r['content'] for r in resume_sections_data])
-                enhanced_query = f"{query}\n\nHere is the user's background from their resume:\n{resume_text}"
-                return await interview_prep_agent(enhanced_query)
-            else:
-                return await interview_prep_agent(query)
-        
-        async def general_career_with_context(query: str):
-            if resume_sections_data:
-                # Add resume data to the query
-                resume_text = "\n\n".join([r['content'] for r in resume_sections_data])
-                enhanced_query = f"{query}\n\nHere is the user's background from their resume:\n{resume_text}"
-                return await general_career_agent(enhanced_query)
-            else:
-                return await general_career_agent(query)
-        
-        # Define executor dictionary mapping agent names to functions
-        executor_dict = {
-            "Resume Search Agent": resume_search_with_context,
-            "Resume Assessment Agent": resume_assessment_with_context,
-            "Job Search Agent": job_search_with_context,
-            "Interview Prep Agent": interview_prep_with_context,
-            "General Career Agent": general_career_with_context,
-        }
-        
-        # Connect and query
-        async with self.distiller_client(
-            project=self.project_name,
-            uuid=user_id,
-            executor_dict=executor_dict
-        ) as dc:
-            responses = await dc.query(query=enhanced_message)
-            
-            # Collect all response chunks
-            full_response = ""
-            async for response in responses:
-                full_response += response.get('content', '')
-            
-            return full_response
+    Current query: {query}
+    """
 
-
-# Simple function for easy use
-async def ask_agents(message: str, user_id: str = "user", session_id: str = None) -> str:
-    """Simple function to ask the career agents"""
-    agents = CareerAgents()
-    return await agents.chat(message, user_id, session_id)
+    return await openai_call(enhanced_query)
