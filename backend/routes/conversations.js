@@ -181,7 +181,7 @@ router.post('/:conversationId/system-message', (req, res) => {
 // Generate AI response using AI Refinery + AWS OpenSearch pipeline
 async function generateAIResponse(userMessage, conversationId, attachments) {
   return new Promise((resolve, reject) => {
-    const scriptPath = path.join(__dirname, '../node-python_scripts/chat.py');
+    const scriptPath = path.join(__dirname, '../node-python_scripts/chat_script.py');
     
     // Use conversationId as both user_id and session_id for resume context
     const args = [scriptPath, userMessage, conversationId, conversationId];

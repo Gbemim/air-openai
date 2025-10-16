@@ -45,7 +45,6 @@ async def resume_search_agent(query: str, config: dict = None, **kwargs):
 
         # Search in OpenSearch using OpenAI embeddings with config-specified top_k
         results = search_resume_content(enhanced_query, session_id, k=top_k)
-
         if not results:
             return "No resume content found. Please make sure a resume has been uploaded."
 
@@ -62,7 +61,7 @@ async def resume_search_agent(query: str, config: dict = None, **kwargs):
 
 
 
-async def resume_assessment_agent(query: str, config: dict = None, resume_data: list = None, **kwargs):
+async def resume_assessment_agent(query: str, config: dict = None, **kwargs):
     """Assess resumes and provide actionable feedback"""
     
     print(f"[AGENT] Resume Assessment Agent invoked")
@@ -77,10 +76,26 @@ async def resume_assessment_agent(query: str, config: dict = None, resume_data: 
     scoring_weights = config.get('scoring_weights', {})
     feedback_categories = config.get('feedback_categories', {})
     
-    # Inject resume context if provided
-    if resume_data:
-        resume_text = "\n\n".join([r['content'] for r in resume_data])
-        query = f"{query}\n\nHere is the user's resume content:\n{resume_text}"
+    # Extract session_id from query if present
+    session_id = None
+    enhanced_query = query
+    if "session_id:" in query:
+        parts = query.split("session_id:")
+        session_id = parts[1].strip().split()[0] if len(parts) > 1 else None
+        enhanced_query = parts[0].strip()
+    
+    # Get resume content using semantic search
+    if session_id:
+        try:
+            results = search_resume_content(enhanced_query, session_id, k=5)
+            if results:
+                resume_text = "\n\n".join([r['content'] for r in results])
+                enhanced_query = f"{enhanced_query}\n\nHere is the user's resume content:\n{resume_text}"
+            else:
+                return "I don't see your resume. Please make sure a resume has been uploaded."
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch resume content: {e}")
+            return "I couldn't access your resume. Please make sure a resume has been uploaded."
     else:
         return "I don't see your resume. Please provide it to me, and I'll be able to give you a more accurate assessment of your skills and provide recommendations tailored to your experience."
     
@@ -100,7 +115,7 @@ Provide:
 
 Be concise, practical, and encouraging.
 
-{query}"""
+{enhanced_query}"""
 
     client = await auth_manager.get_air_client()
     response = await client.chat.completions.create(
@@ -111,7 +126,7 @@ Be concise, practical, and encouraging.
 
 
 
-async def job_search_agent(query: str, config: dict = None, resume_data: list = None, **kwargs):
+async def job_search_agent(query: str, config: dict = None, **kwargs):
     """Help users find jobs online"""
     
     print(f"[AGENT] Job Search Agent invoked")
@@ -123,10 +138,23 @@ async def job_search_agent(query: str, config: dict = None, resume_data: list = 
     search_strategies = config.get('search_strategies', {})
     job_categories = config.get('job_categories', ['Software Engineering', 'Data Science'])
     
-    # Inject resume context if provided
-    if resume_data:
-        resume_text = "\n\n".join([r['content'] for r in resume_data])
-        query = f"{query}\n\nHere is the user's background from their resume:\n{resume_text}"
+    # Extract session_id from query if present
+    session_id = None
+    enhanced_query = query
+    if "session_id:" in query:
+        parts = query.split("session_id:")
+        session_id = parts[1].strip().split()[0] if len(parts) > 1 else None
+        enhanced_query = parts[0].strip()
+    
+    # Get resume content using semantic search if session_id available
+    if session_id:
+        try:
+            results = search_resume_content(enhanced_query, session_id, k=5)
+            if results:
+                resume_text = "\n\n".join([r['content'] for r in results])
+                enhanced_query = f"{enhanced_query}\n\nHere is the user's background from their resume:\n{resume_text}"
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch resume content: {e}")
     
     # Build platform and category lists for the prompt
     platforms_text = "\n".join([f"- {platform}" for platform in search_platforms])
@@ -153,7 +181,7 @@ Provide:
 
 Be specific and actionable.
 
-{query}"""
+{enhanced_query}"""
 
     client = await auth_manager.get_air_client()
     response = await client.chat.completions.create(
@@ -164,7 +192,7 @@ Be specific and actionable.
 
 
 
-async def interview_prep_agent(query: str, config: dict = None, resume_data: list = None, **kwargs):
+async def interview_prep_agent(query: str, config: dict = None, **kwargs):
     """Help users prepare for interviews"""
     
     print(f"[AGENT] Interview Prep Agent invoked")
@@ -176,10 +204,23 @@ async def interview_prep_agent(query: str, config: dict = None, resume_data: lis
     question_categories = config.get('question_categories', {})
     answer_frameworks = config.get('answer_frameworks', {})
     
-    # Inject resume context if provided
-    if resume_data:
-        resume_text = "\n\n".join([r['content'] for r in resume_data])
-        query = f"{query}\n\nHere is the user's background from their resume:\n{resume_text}"
+    # Extract session_id from query if present
+    session_id = None
+    enhanced_query = query
+    if "session_id:" in query:
+        parts = query.split("session_id:")
+        session_id = parts[1].strip().split()[0] if len(parts) > 1 else None
+        enhanced_query = parts[0].strip()
+    
+    # Get resume content using semantic search if session_id available
+    if session_id:
+        try:
+            results = search_resume_content(enhanced_query, session_id, k=5)
+            if results:
+                resume_text = "\n\n".join([r['content'] for r in results])
+                enhanced_query = f"{enhanced_query}\n\nHere is the user's background from their resume:\n{resume_text}"
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch resume content: {e}")
     
     # Build framework text for the prompt
     frameworks_text = "\n".join([f"- {name}: {description}" for name, description in answer_frameworks.items()])
@@ -200,7 +241,7 @@ Help this person prepare:
 
 Be practical and specific.
 
-{query}"""
+{enhanced_query}"""
 
     client = await auth_manager.get_air_client()
     response = await client.chat.completions.create(
@@ -211,30 +252,43 @@ Be practical and specific.
 
 
 
-async def general_career_agent(query: str, config: dict = None, resume_data: list = None, **kwargs):
-
+async def general_career_agent(query: str, config: dict = None, **kwargs):
+    """General career guidance using OpenAI"""
+    
     print(f"[AGENT] General Career Agent invoked")
     agents_used.add("General Career Agent")
 
-    """General career guidance using OpenAI"""
     # Get configuration values with defaults
     config = config or {}
     response_style = config.get('response_style', 'conversational')
     expertise_areas = config.get('expertise_areas', ['Career transitions', 'Skill development'])
     max_response_length = config.get('max_response_length', 500)
     
-    # Inject resume context if provided
-    if resume_data:
-        resume_text = "\n\n".join([r['content'] for r in resume_data])
-        query = f"{query}\n\nHere is the user's background from their resume:\n{resume_text}"
+    # Extract session_id from query if present
+    session_id = None
+    enhanced_query = query
+    if "session_id:" in query:
+        parts = query.split("session_id:")
+        session_id = parts[1].strip().split()[0] if len(parts) > 1 else None
+        enhanced_query = parts[0].strip()
     
-    # Enhance query with chat history and config
-    enhanced_query = f"""
+    # Get resume content using semantic search if session_id available
+    if session_id:
+        try:
+            results = search_resume_content(enhanced_query, session_id, k=5)
+            if results:
+                resume_text = "\n\n".join([r['content'] for r in results])
+                enhanced_query = f"{enhanced_query}\n\nHere is the user's background from their resume:\n{resume_text}"
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch resume content: {e}")
+    
+    # Enhance query with config
+    final_query = f"""
     Response Style: {response_style}
     Expertise Areas: {', '.join(expertise_areas)}
     Max Response Length: {max_response_length} words
         
-    Current query: {query}
+    Current query: {enhanced_query}
     """
 
-    return await openai_call(enhanced_query)
+    return await openai_call(final_query)

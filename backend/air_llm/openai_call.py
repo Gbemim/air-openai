@@ -1,5 +1,5 @@
 """
-Simple AI agent using OpenAI GPT models
+Call to OpenAI GPT models
 """
 
 from auth import auth_manager

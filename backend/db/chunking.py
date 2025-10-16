@@ -4,22 +4,15 @@ import os
 from datetime import datetime
 from typing import List, Dict, Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from openai import OpenAI
 from aws_opensearch import AWSOpenSearchClient
 from dotenv import load_dotenv
+from auth import auth_manager
 
 # Load environment variables
 load_dotenv()
 
-# Initialize clients when needed, not at module import
-client = None
+# Initialize clients when needed
 opensearch_client = None
-
-def get_openai_client():
-    global client
-    if client is None:
-        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    return client
 
 def get_opensearch_client():
     global opensearch_client
@@ -64,7 +57,7 @@ def build_chunk_metadata(chunks: List[str], filename: str, session_id: str = Non
                 "source": "pdf",
                 "filename": filename,
                 "session_id": session_id,
-                "created_at": datetime.utcnow().isoformat() + "Z"
+                "created_at": datetime.datetime.now()
             }
         }
         for i, chunk in enumerate(chunks)
@@ -72,7 +65,7 @@ def build_chunk_metadata(chunks: List[str], filename: str, session_id: str = Non
 
 def embed_chunks(chunks: List[str]) -> List[List[float]]:
     """Generate embeddings for text chunks using OpenAI"""
-    client = get_openai_client()
+    client = auth_manager.get_openai_client()
     embeddings = []
     for chunk in chunks:
         emb = client.embeddings.create(
@@ -133,7 +126,7 @@ def search_resume_content(query: str, session_id: str = None, k: int = 5) -> Lis
     try:
         print(f"[DEBUG chunking] Searching with query: '{query[:50]}...', session_id: {session_id}")
         # Generate embedding for the query
-        client = get_openai_client()
+        client = auth_manager.get_openai_client()
         query_embedding = client.embeddings.create(
             model="text-embedding-3-large",
             input=query
