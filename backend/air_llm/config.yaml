@@ -2,49 +2,12 @@
 
 orchestrator:
   agent_list:
-    - agent_name: "Resume Search Agent"
     - agent_name: "Resume Assessment Agent"
     - agent_name: "Job Search Agent"
     - agent_name: "Interview Prep Agent"
     - agent_name: "General Career Agent"
 
 utility_agents:
-  - agent_class: CustomAgent
-    agent_name: "Resume Search Agent"
-    agent_description: "Searches resume content using semantic vector search in AWS OpenSearch with OpenAI embeddings."
-    config:
-      source_folder: "uploads/"
-      pipeline_steps:
-        - chunk
-        - embed
-        - upload
-      knowledge_config:
-        chunking_config:
-          algorithm: RecursiveCharacterTextSplitter
-          chunk_size: 1000
-          overlap_size: 100
-          separators: ["\n\n", "\n", ".", " "]
-        embedding_config:
-          model: text-embedding-3-large
-          batch_size: 1
-          max_workers: 1
-        upload_config:
-          batch_size: 50
-          max_workers: 2
-        vectordb_config:
-          type: OpenSearch
-          base_url: "from OPENSEARCH_ENDPOINT env"
-          index: "resume-vectors"
-          embedding_column: "embedding"
-          embedding_dimension: 3072
-          top_k: 5
-          content_column:
-            - content
-            - metadata
-          search_method: "knn"
-          space_type: "cosinesimil"
-          timeout: 10
-
   - agent_class: CustomAgent
     agent_name: "Resume Assessment Agent"
     agent_description: "Analyzes resumes and provides feedback on strengths, improvements, and market readiness."
@@ -80,9 +43,8 @@ utility_agents:
         - "GitHub Jobs"
       search_strategies:
         keyword_optimization: "Use specific job titles and skills"
-        location_targeting: "Focus on preferred locations or remote options"
+        location_targeting: "Focus on location provided on the resume or remote options"
         company_research: "Research target companies and their culture"
-        application_timing: "Apply within 24-48 hours of posting"
       job_categories:
         - "Software Engineering"
         - "Data Science"
@@ -133,27 +95,18 @@ utility_agents:
 
 
 # super_agents:
-#   - agent_class: FlowSuperAgent # FlowSuperAgent class design
-#     agent_name: "Career Counselor" # Required. A name that you choose for your super agent.
-#     agent_description: | # Required. Description of your super agent.
-#       The Strategy Advisor can help user write their marketing campaign brief. Only call this agent when the user explicitly asks for a brief.
-
-#     config: # Required. Configuration of this super agent.
-#       goal: | # Required. A high level goal of your super agent.
-#         The goal is to create an insights brief for a marketing campaign. To create the brief, you will need to call the research agent to do research around the topic. Make sure you have called all the agents (you can track the call history from below) before you call the author agent to draft an insights brief.
-
-#       agent_list: # Required. The list of agents to be added in the agent pool. Each agent listed here must be configured under `utility_agents` in the root of the project YAML file.
-#         - agent_name: "Competitor Researcher"  # Required.
+#   - agent_class: FlowSuperAgent 
+#     agent_name: "Career Counselor Flow" 
+#     agent_description: | 
+#       The Career Counselor Flow helps users navigate their career paths by providing tailored advice and resources.
+    
+#     config:
+#       goal: |
+#         Assist users in improving their career prospects through resume assessment, job search strategies, and interview preparation.
+      
+#       agent_list: 
+#         - agent_name: "Job Search Agent"  # Required.
 #           next_step: # User design. These are the tasks that depend on this step and will be executed afterward.
-#             - "Campaign Insights Researcher"
-#             - "Audience Understanding Researcher"
-
-#         - agent_name: "Campaign Insights Researcher"  # Required.
-#           next_step: # User design. Specifies next steps to run after this agent.
-#             - "Brief Writer"
-
-#         - agent_name: "Audience Understanding Researcher"  # Required.
-#           next_step: # User design. Specifies next steps to run after this agent.
-#             - "Brief Writer"
-
-#         - agent_name: "Brief Writer"  # Required. Exit agent that produces the summary output.
+#             - "Interview Prep Agent"
+            
+#         - agent_name: "Interview Prep Agent"  # Required.

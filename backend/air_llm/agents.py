@@ -101,18 +101,18 @@ async def resume_assessment_agent(query: str, config: dict = None, **kwargs):
 
     prompt = f"""You are a career counselor analyzing a resume.
 
-**Assessment Criteria (with weights):**
-For each criterion, use its scoring weight, for the level of weight each criteria has.
-{criteria_text}
-
 Provide:
 1. **STRENGTHS** ({feedback_categories.get('strengths', 'Highlight positive aspects and standout elements')})
 
 2. **IMPROVEMENTS** ({feedback_categories.get('improvements', 'Specific actionable recommendations')})
 
-3. **MARKET READINESS** ({feedback_categories.get('market_readiness', 'Overall competitiveness assessment')}) - Use the weighted score with brief explanation
+3. **MARKET READINESS** ({feedback_categories.get('market_readiness', 'Overall competitiveness assessment')}) 
 
 4. **NEXT STEPS** ({feedback_categories.get('next_steps', 'Concrete actions to enhance the resume')})
+
+**Assessment Criteria (with weights):**
+{criteria_text}
+For each criterion, use its scoring weight, for the level of weight each criteria has and apply it to each of the feedback categories.
 
 Be concise, practical, and encouraging.
 
@@ -135,9 +135,9 @@ async def job_search_agent(query: str, config: dict = None, **kwargs):
 
     # Get configuration values with defaults
     config = config or {}
-    search_platforms = config.get('search_platforms', ['LinkedIn', 'Indeed', 'Glassdoor'])
+    search_platforms = config.get('search_platforms', [])
     search_strategies = config.get('search_strategies', {})
-    job_categories = config.get('job_categories', ['Software Engineering', 'Data Science'])
+    job_categories = config.get('job_categories', [])
     
     # Extract session_id from query if present
     session_id = None
@@ -228,7 +228,7 @@ async def interview_prep_agent(query: str, config: dict = None, **kwargs):
     
     prompt = f"""You are an interview coach. 
 
-Focus on these interview types: {', '.join(interview_types)}
+Focus on these interview types: {', '.join(interview_types)}. You can exclude any of them if not relevant.
 
 Use these answer frameworks:
 {frameworks_text}

@@ -210,7 +210,7 @@ async function generateAIResponse(userMessage, conversationId, attachments) {
           const result = JSON.parse(jsonLine);
           
           if (result.success) {
-            // Return the AI response (without the service badge to keep it clean)
+            // Return the AI response
             resolve(result.response);
           } else {
             console.error('AI processing failed:', result.error);

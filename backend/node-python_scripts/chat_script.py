@@ -82,7 +82,7 @@ def main():
         # Run async chat handler
         result = asyncio.run(handle_chat(message, user_id, session_id))
         
-        # Output based on format
+        # Terminal output based on format
         if output_format == 'pretty' and RICH_AVAILABLE:
             # Pretty markdown rendering for terminal viewing
             console = Console()

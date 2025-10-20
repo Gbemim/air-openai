@@ -90,7 +90,6 @@ class CareerAgents:
 
         # Executor dictionary
         executor_dict = {
-            "Resume Search Agent": resume_search_agent,
             "Resume Assessment Agent": resume_assessment_agent,
             "Job Search Agent": job_search_agent,
             "Interview Prep Agent": interview_prep_agent,
