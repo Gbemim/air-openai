@@ -13,7 +13,7 @@ sys.path.append(os.path.join(backend_dir, 'db'))
 
 # Third-party and local imports
 from chunking import search_resume_content
-from auth import auth_manager
+from llm_auth import auth_manager
 from openai_call import openai_call
 
 # Track which agents are used
@@ -69,10 +69,7 @@ async def resume_assessment_agent(query: str, config: dict = None, **kwargs):
 
     # Get configuration values with defaults
     config = config or {}
-    assessment_criteria = config.get('assessment_criteria', [
-        'technical_skills', 'experience_relevance', 'achievements_quantification', 
-        'formatting_quality', 'keyword_optimization'
-    ])
+    assessment_criteria = config.get('assessment_criteria', [])
     scoring_weights = config.get('scoring_weights', {})
     feedback_categories = config.get('feedback_categories', {})
     
@@ -95,35 +92,39 @@ async def resume_assessment_agent(query: str, config: dict = None, **kwargs):
                 return "I don't see your resume. Please make sure a resume has been uploaded."
         except Exception as e:
             print(f"[ERROR] Failed to fetch resume content: {e}")
-            return "I couldn't access your resume. Please make sure a resume has been uploaded."
+            return "I couldn't access your resume. Please make sure a resume has been uploaded and you have the right session ID."
     else:
         return "I don't see your resume. Please provide it to me, and I'll be able to give you a more accurate assessment of your skills and provide recommendations tailored to your experience."
     
     # Build assessment prompt based on config
-    criteria_text = "\n".join([f"- {criterion.replace('_', ' ').title()}" for criterion in assessment_criteria])
-    
-    prompt = f"""You are a career counselor. 
+    criteria_text = "\n".join([f"- {criterion.replace('_', ' ').title()} (Weight: {scoring_weights.get(criterion, 0.0) })" for criterion in assessment_criteria])
 
-Analyze the resume focusing on these criteria:
+    prompt = f"""You are a career counselor analyzing a resume.
+
+**Assessment Criteria (with weights):**
+For each criterion, use its scoring weight, for the level of weight each criteria has.
 {criteria_text}
 
 Provide:
 1. **STRENGTHS** ({feedback_categories.get('strengths', 'Highlight positive aspects and standout elements')})
+
 2. **IMPROVEMENTS** ({feedback_categories.get('improvements', 'Specific actionable recommendations')})
-3. **MARKET READINESS** ({feedback_categories.get('market_readiness', 'Overall competitiveness assessment')}) - score 1-10 with brief explanation
+
+3. **MARKET READINESS** ({feedback_categories.get('market_readiness', 'Overall competitiveness assessment')}) - Use the weighted score with brief explanation
+
 4. **NEXT STEPS** ({feedback_categories.get('next_steps', 'Concrete actions to enhance the resume')})
 
 Be concise, practical, and encouraging.
 
-{enhanced_query}"""
 
+{enhanced_query}"""
     client = await auth_manager.get_air_client()
     response = await client.chat.completions.create(
         messages=[{"role": "user", "content": prompt}],
         model="meta-llama/Llama-3.1-70B-Instruct",
     )
+    print(f"[DEBUG] Assessment criteria:\n{criteria_text}")
     return response.choices[0].message.content
-
 
 
 async def job_search_agent(query: str, config: dict = None, **kwargs):

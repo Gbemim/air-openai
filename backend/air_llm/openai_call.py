@@ -2,7 +2,7 @@
 Call to OpenAI GPT models
 """
 
-from auth import auth_manager
+from llm_auth import auth_manager
 
 async def openai_call(query: str):
     """

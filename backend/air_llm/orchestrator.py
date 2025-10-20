@@ -14,7 +14,7 @@ sys.path.append(os.path.join(backend_dir, 'db'))
 
 # Third-party and local imports
 from chunking import search_resume_content
-from auth import auth_manager
+from llm_auth import auth_manager
 from agents import (
     resume_search_agent,
     resume_assessment_agent,
@@ -83,6 +83,10 @@ class CareerAgents:
         enhanced_message = message
         if resume_context:
             enhanced_message = f"{message}{resume_context}"
+
+        # Append session_id to message so agents can extract it
+        if session_id:
+            enhanced_message = f"{enhanced_message} session_id:{session_id}"
 
         # Executor dictionary
         executor_dict = {

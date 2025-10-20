@@ -14,7 +14,6 @@ utility_agents:
     agent_description: "Searches resume content using semantic vector search in AWS OpenSearch with OpenAI embeddings."
     config:
       source_folder: "uploads/"
-      doc_model: "resume-brain/knowledge-brain"
       pipeline_steps:
         - chunk
         - embed
@@ -131,3 +130,30 @@ utility_agents:
         - "Networking strategies"
         - "Professional growth"
       max_response_length: 500
+
+
+# super_agents:
+#   - agent_class: FlowSuperAgent # FlowSuperAgent class design
+#     agent_name: "Career Counselor" # Required. A name that you choose for your super agent.
+#     agent_description: | # Required. Description of your super agent.
+#       The Strategy Advisor can help user write their marketing campaign brief. Only call this agent when the user explicitly asks for a brief.
+
+#     config: # Required. Configuration of this super agent.
+#       goal: | # Required. A high level goal of your super agent.
+#         The goal is to create an insights brief for a marketing campaign. To create the brief, you will need to call the research agent to do research around the topic. Make sure you have called all the agents (you can track the call history from below) before you call the author agent to draft an insights brief.
+
+#       agent_list: # Required. The list of agents to be added in the agent pool. Each agent listed here must be configured under `utility_agents` in the root of the project YAML file.
+#         - agent_name: "Competitor Researcher"  # Required.
+#           next_step: # User design. These are the tasks that depend on this step and will be executed afterward.
+#             - "Campaign Insights Researcher"
+#             - "Audience Understanding Researcher"
+
+#         - agent_name: "Campaign Insights Researcher"  # Required.
+#           next_step: # User design. Specifies next steps to run after this agent.
+#             - "Brief Writer"
+
+#         - agent_name: "Audience Understanding Researcher"  # Required.
+#           next_step: # User design. Specifies next steps to run after this agent.
+#             - "Brief Writer"
+
+#         - agent_name: "Brief Writer"  # Required. Exit agent that produces the summary output.

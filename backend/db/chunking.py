@@ -6,7 +6,15 @@ from typing import List, Dict, Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from aws_opensearch import AWSOpenSearchClient
 from dotenv import load_dotenv
-from auth import auth_manager
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent / 'air_llm'))
+try:
+    from llm_auth import auth_manager
+except ImportError as e:
+    print(f"Import error: {e}", file=sys.stderr)
+    sys.exit(1)
 
 # Load environment variables
 load_dotenv()
@@ -57,7 +65,7 @@ def build_chunk_metadata(chunks: List[str], filename: str, session_id: str = Non
                 "source": "pdf",
                 "filename": filename,
                 "session_id": session_id,
-                "created_at": datetime.datetime.now()
+                "created_at": datetime.now()
             }
         }
         for i, chunk in enumerate(chunks)
