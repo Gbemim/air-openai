@@ -94,6 +94,7 @@ utility_agents:
       max_response_length: 500
 
 
+# The below is an example of how to using the flow super agent 
 # super_agents:
 #   - agent_class: FlowSuperAgent 
 #     agent_name: "Career Counselor Flow" 
